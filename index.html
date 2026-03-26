@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>LU Solver Professional</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --accent: #10b981; /* Esmeralda */
+            --secondary: #3b82f6; /* Azul */
+            --text: #f1f5f9;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .main-container {
+            max-width: 900px;
+            width: 100%;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        h1 { text-align: center; color: var(--accent); margin-bottom: 30px; font-weight: 300; letter-spacing: 2px; }
+
+        .glass-card {
+            background: var(--card);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        /* DISEÑO DE MATRIZ */
+        .setup-section {
+            display: flex;
+            gap: 40px;
+            justify-content: center;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            margin-bottom: 25px;
+        }
+
+        .matrix-container {
+            position: relative;
+            padding: 10px 15px;
+            border-left: 3px solid var(--accent);
+            border-right: 3px solid var(--accent);
+            border-radius: 10px;
+        }
+
+        .matrix-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 65px);
+            gap: 12px;
+        }
+
+        .vector-grid {
+            display: grid;
+            grid-template-columns: 65px;
+            gap: 12px;
+            border-left: 3px solid var(--secondary);
+            border-right: 3px solid var(--secondary);
+            padding: 10px 15px;
+            border-radius: 10px;
+        }
+
+        input {
+            width: 60px;
+            height: 45px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        input:focus {
+            border-color: var(--accent);
+            outline: none;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+            transform: translateY(-2px);
+        }
+
+        /* CONTROLES */
+        .controls {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        select {
+            padding: 10px;
+            background: #0f172a;
+            color: white;
+            border: 1px solid #334155;
+            border-radius: 5px;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+
+        button {
+            padding: 12px 30px;
+            background: var(--accent);
+            border: none;
+            color: white;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: 0.3s;
+            text-transform: uppercase;
+        }
+
+        button:hover {
+            background: #059669;
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+        }
+
+        /* RESULTADOS */
+        #res {
+            margin-top: 30px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .result-box {
+            background: #020617;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #1e293b;
+        }
+
+        h3 { font-size: 0.9rem; color: #94a3b8; margin-top: 0; text-transform: uppercase; }
+
+        table { width: 100%; border-collapse: collapse; }
+        td { padding: 10px; text-align: center; font-family: 'Courier New', monospace; color: #cbd5e1; border: 1px solid #1e293b; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .full-width { grid-column: span 2; }
+    </style>
+</head>
+<body>
+
+<div class="main-container">
+    <h1>MATH SOLVER <small style="font-size: 0.5em; vertical-align: middle; opacity: 0.6;">v2.0</small></h1>
+
+    <div class="glass-card">
+        <div class="setup-section">
+            <div>
+                <p style="text-align: center; color: #94a3b8; margin-bottom: 10px;">Matriz A</p>
+                <div class="matrix-container">
+                    <div id="A" class="matrix-grid"></div>
+                </div>
+            </div>
+            
+            <div>
+                <p style="text-align: center; color: #94a3b8; margin-bottom: 10px;">b</p>
+                <div id="B" class="vector-grid"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <select id="metodo">
+                <option value="doolittle">Doolittle (Lii = 1)</option>
+                <option value="crout">Crout (Uii = 1)</option>
+                <option value="cholesky">Cholesky</option>
+            </select>
+            <button onclick="resolver()">Calcular Sistema</button>
+        </div>
+
+        <div id="res"></div>
+    </div>
+</div>
+
+<script>
+// Generar inputs al cargar
+const divA = document.getElementById("A");
+const divB = document.getElementById("B");
+
+for (let i=0; i<3; i++) {
+    for (let j=0; j<3; j++) {
+        divA.innerHTML += `<input type="number" id="a${i}${j}" value="0">`;
+    }
+    divB.innerHTML += `<input type="number" id="b${i}" value="0">`;
+}
+
+function getA() {
+    let A = [];
+    for(let i=0; i<3; i++) {
+        A[i] = [];
+        for(let j=0; j<3; j++) A[i][j] = parseFloat(document.getElementById(`a${i}${j}`).value) || 0;
+    }
+    return A;
+}
+
+function getB() {
+    let b = [];
+    for(let i=0; i<3; i++) b[i] = parseFloat(document.getElementById(`b${i}`).value) || 0;
+    return b;
+}
+
+function crearTabla(M, tipo = 'matriz') {
+    let t = "<table>";
+    for(let i=0; i<3; i++) {
+        t += "<tr>";
+        if (tipo === 'vector') {
+            t += `<td>${M[i].toFixed(4)}</td>`;
+        } else {
+            for(let j=0; j<3; j++) t += `<td>${M[i][j].toFixed(4)}</td>`;
+        }
+        t += "</tr>";
+    }
+    return t + "</table>";
+}
+
+// LÓGICA MATEMÁTICA
+function doolittle(A) {
+    let L = [[1,0,0],[0,1,0],[0,0,1]], U = [[0,0,0],[0,0,0],[0,0,0]];
+    for(let i=0; i<3; i++) {
+        for(let j=i; j<3; j++) {
+            let s = 0; for(let k=0; k<i; k++) s += L[i][k]*U[k][j];
+            U[i][j] = A[i][j] - s;
+        }
+        for(let j=i+1; j<3; j++) {
+            let s = 0; for(let k=0; k<i; k++) s += L[j][k]*U[k][i];
+            L[j][i] = (A[j][i]-s)/U[i][i];
+        }
+    }
+    return {L, U};
+}
+
+function crout(A) {
+    let L = [[0,0,0],[0,0,0],[0,0,0]], U = [[1,0,0],[0,1,0],[0,0,1]];
+    for(let i=0; i<3; i++) {
+        for(let j=i; j<3; j++) {
+            let s = 0; for(let k=0; k<i; k++) s += L[j][k]*U[k][i];
+            L[j][i] = A[j][i] - s;
+        }
+        for(let j=i+1; j<3; j++) {
+            let s = 0; for(let k=0; k<i; k++) s += L[i][k]*U[k][j];
+            U[i][j] = (A[i][j]-s)/L[i][i];
+        }
+    }
+    return {L, U};
+}
+
+function cholesky(A) {
+    let L = [[0,0,0],[0,0,0],[0,0,0]];
+    for(let i=0; i<3; i++) {
+        for(let j=0; j<=i; j++) {
+            let s = 0; for(let k=0; k<j; k++) s += L[i][k]*L[j][k];
+            if(i===j) L[i][j] = Math.sqrt(A[i][i]-s);
+            else L[i][j] = (A[i][j]-s)/L[j][j];
+        }
+    }
+    let U = L[0].map((_, c) => L.map(r => r[c]));
+    return {L, U};
+}
+
+function resolver() {
+    let A = getA(), b = getB(), met = document.getElementById("metodo").value;
+    let L, U, resDiv = document.getElementById("res");
+    
+    try {
+        if(met==="doolittle") ({L, U} = doolittle(A));
+        else if(met==="crout") ({L, U} = crout(A));
+        else ({L, U} = cholesky(A));
+
+        // Forward substitution L*y = b
+        let y = [0,0,0];
+        for(let i=0; i<3; i++) {
+            let s = 0; for(let j=0; j<i; j++) s += L[i][j]*y[j];
+            y[i] = (b[i]-s)/L[i][i];
+        }
+        // Backward substitution U*x = y
+        let x = [0,0,0];
+        for(let i=2; i>=0; i--) {
+            let s = 0; for(let j=i+1; j<3; j++) s += U[i][j]*x[j];
+            x[i] = (y[i]-s)/U[i][i];
+        }
+
+        resDiv.innerHTML = `
+            <div class="result-box"><h3>Matriz L</h3>${crearTabla(L)}</div>
+            <div class="result-box"><h3>Matriz U</h3>${crearTabla(U)}</div>
+            <div class="result-box"><h3>Vector intermedio (y)</h3>${crearTabla(y, 'vector')}</div>
+            <div class="result-box" style="border-color: var(--accent)"><h3>Solución Final (x)</h3>${crearTabla(x, 'vector')}</div>
+        `;
+    } catch(e) {
+        resDiv.innerHTML = `<div class="full-width result-box" style="color: #ef4444">Error: La matriz puede ser singular o no definida positiva.</div>`;
+    }
+}
+</script>
+
+</body>
+</html>
